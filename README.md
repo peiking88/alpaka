@@ -100,6 +100,82 @@ When an accelerator back-end using *TBB* is enabled, the compiler and the platfo
 
 [Boost](https://boost.org/) 1.78.0+ is an optional external dependency, if the used C++ standard library does not support `std::atomic_ref`.
 
+Libfork Back-end Support
+------------------------
+
+### Overview
+
+Libfork is a lightweight, header-only C++20 coroutine library for parallel task scheduling. It provides fork-join semantics and efficient work-stealing schedulers. The libfork back-end for alpaka enables parallel execution of grid blocks using libfork's busy_pool scheduler.
+
+### Enabling the Libfork Back-end
+
+To enable the libfork accelerator back-end, set the following CMake option:
+
+```bash
+cmake -S . -B build -D alpaka_ACC_CPU_B_LIBFORK_T_SEQ_ENABLE=ON -D BUILD_TESTING=ON
+```
+
+This will define the macro `ALPAKA_ACC_CPU_B_LIBFORK_T_SEQ_ENABLED` and include the necessary headers.
+
+### Dependencies
+
+- **Libfork**: A header-only C++20 coroutine library (included in `thirdParty/libfork/`).
+- **Compiler**: Must support C++20 coroutines (GCC 11+, Clang 14+, MSVC 19.28+).
+
+### Implementation Details
+
+The libfork back-end consists of the following components:
+
+1. **Accelerator Class**: `include/alpaka/acc/AccCpuLibforkBlocks.hpp`
+   - Derived from `AccCpuOmp2Blocks` with libfork-specific adaptations.
+   - Implements `getAccDevProps()` using hardware concurrency.
+
+2. **Kernel Task Class**: `include/alpaka/kernel/TaskKernelCpuLibforkBlocks.hpp`
+   - Uses libfork's `busy_pool` for parallel block execution.
+   - Coroutine-based implementation with `lf::fork`, `lf::join`, and `lf::sync_wait`.
+
+3. **Tag Definition**: Added `TagCpuLibforkBlocks` in `include/alpaka/acc/Tag.hpp`.
+
+4. **Main Header**: Conditional inclusion in `include/alpaka/alpaka.hpp`.
+
+5. **Unit Test**: `test/unit/acc/src/LibforkAccTest.cpp` verifies basic functionality.
+
+### Compilation Guide
+
+1. Ensure the libfork submodule is initialized and updated:
+   ```bash
+   git submodule update --init thirdParty/libfork
+   ```
+
+2. Configure with libfork support:
+   ```bash
+   cmake -S . -B build -D alpaka_ACC_CPU_B_LIBFORK_T_SEQ_ENABLE=ON -D BUILD_TESTING=ON
+   ```
+
+3. Build the project:
+   ```bash
+   cd build && make -j4
+   ```
+
+4. Run unit tests:
+   ```bash
+   ctest --output-on-failure
+   ```
+
+### Known Issues and Solutions
+
+1. **Header Inclusion**: Libfork's headers are organized under `libfork/core/`. Use `#include <libfork/core.hpp>` instead of individual headers.
+
+2. **Namespace**: Libfork's functions are in namespace `lf`. Ensure proper qualification: `lf::sync_wait`, `lf::fork`, `lf::join`.
+
+3. **Compiler Support**: Some compilers may have incomplete C++20 coroutine support. Test with recent GCC or Clang versions.
+
+4. **Integration Complexity**: The libfork back-end is experimental and may require additional adjustments for full compatibility with all alpaka features.
+
+### Status
+
+The libfork back-end is currently **experimental**. It passes basic unit tests but requires further validation and optimization for production use.
+
 Usage
 -----
 

@@ -57,6 +57,14 @@
             }
         },
         {
+            "name": "cpu-libfork",
+            "description": "enable libfork back-end",
+            "inherits": "develop",
+            "cacheVariables": {
+                "alpaka_ACC_CPU_B_LIBFORK_ENABLE": "ON"
+            }
+        },
+        {
             "name": "cpu-all",
             "description": "enable all cpu back-ends (serial, OpenMP 2 Grid Block and Block Thread, std::thread and Intel TBB back-end",
             "inherits": "develop",
@@ -65,7 +73,8 @@
                 "alpaka_ACC_CPU_B_OMP2_T_SEQ_ENABLE": "ON",
                 "alpaka_ACC_CPU_B_SEQ_T_OMP2_ENABLE": "ON",
                 "alpaka_ACC_CPU_B_SEQ_T_THREADS_ENABLE": "ON",
-                "alpaka_ACC_CPU_B_TBB_T_SEQ_ENABLE": "ON"
+                "alpaka_ACC_CPU_B_TBB_T_SEQ_ENABLE": "ON",
+                "alpaka_ACC_CPU_B_LIBFORK_ENABLE": "ON"
             }
         },
         {
