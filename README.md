@@ -179,6 +179,7 @@ git submodule update --init thirdParty/libfork
 
 #### 2. Configure with Libfork Support
 ```bash
+
 # Basic configuration with libfork enabled
 cmake -S . -B build -D alpaka_ACC_CPU_B_LIBFORK_T_SEQ_ENABLE=ON -D BUILD_TESTING=ON
 
