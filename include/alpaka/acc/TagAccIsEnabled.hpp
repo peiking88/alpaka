@@ -12,6 +12,9 @@
 #include "alpaka/acc/AccCpuSycl.hpp"
 #include "alpaka/acc/AccCpuTbbBlocks.hpp"
 #include "alpaka/acc/AccCpuThreads.hpp"
+#ifdef ALPAKA_ACC_CPU_B_LIBFORK_T_SEQ_ENABLED
+    #include "alpaka/acc/AccCpuLibforkBlocks.hpp"
+#endif
 #include "alpaka/acc/AccFpgaSyclIntel.hpp"
 #include "alpaka/acc/AccGpuCudaRt.hpp"
 #include "alpaka/acc/AccGpuHipRt.hpp"

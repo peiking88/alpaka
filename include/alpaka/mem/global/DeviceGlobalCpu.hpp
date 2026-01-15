@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include "alpaka/acc/Tag.hpp"
 #include "alpaka/mem/buf/cpu/Copy.hpp"
 #include "alpaka/mem/global/Traits.hpp"
 #include "alpaka/mem/view/ViewPlainPtr.hpp"
@@ -45,6 +46,14 @@ namespace alpaka
         {
             using Type = detail::DevGlobalImplGeneric<TagCpuThreads, T>;
         };
+
+#ifdef ALPAKA_ACC_CPU_B_LIBFORK_T_SEQ_ENABLED
+        template<typename T>
+        struct DevGlobalTrait<TagCpuLibforkBlocks, T>
+        {
+            using Type = detail::DevGlobalImplGeneric<TagCpuLibforkBlocks, T>;
+        };
+#endif
     } // namespace detail
 
     template<
@@ -55,7 +64,11 @@ namespace alpaka
         typename std::enable_if_t<
             std::is_same_v<TTag, TagCpuOmp2Blocks> || std::is_same_v<TTag, TagCpuOmp2Threads>
                 || std::is_same_v<TTag, TagCpuSerial> || std::is_same_v<TTag, TagCpuTbbBlocks>
-                || std::is_same_v<TTag, TagCpuThreads>,
+                || std::is_same_v<TTag, TagCpuThreads>
+#ifdef ALPAKA_ACC_CPU_B_LIBFORK_T_SEQ_ENABLED
+                || std::is_same_v<TTag, TagCpuLibforkBlocks>
+#endif
+            ,
             int>
         = 0>
     ALPAKA_FN_HOST auto memcpy(
@@ -80,7 +93,11 @@ namespace alpaka
         typename std::enable_if_t<
             std::is_same_v<TTag, TagCpuOmp2Blocks> || std::is_same_v<TTag, TagCpuOmp2Threads>
                 || std::is_same_v<TTag, TagCpuSerial> || std::is_same_v<TTag, TagCpuTbbBlocks>
-                || std::is_same_v<TTag, TagCpuThreads>,
+                || std::is_same_v<TTag, TagCpuThreads>
+#ifdef ALPAKA_ACC_CPU_B_LIBFORK_T_SEQ_ENABLED
+                || std::is_same_v<TTag, TagCpuLibforkBlocks>
+#endif
+            ,
             int>
         = 0>
     ALPAKA_FN_HOST auto memcpy(
@@ -106,7 +123,11 @@ namespace alpaka
         typename std::enable_if_t<
             std::is_same_v<TTag, TagCpuOmp2Blocks> || std::is_same_v<TTag, TagCpuOmp2Threads>
                 || std::is_same_v<TTag, TagCpuSerial> || std::is_same_v<TTag, TagCpuTbbBlocks>
-                || std::is_same_v<TTag, TagCpuThreads>,
+                || std::is_same_v<TTag, TagCpuThreads>
+#ifdef ALPAKA_ACC_CPU_B_LIBFORK_T_SEQ_ENABLED
+                || std::is_same_v<TTag, TagCpuLibforkBlocks>
+#endif
+            ,
             int>
         = 0>
     ALPAKA_FN_HOST auto memcpy(
@@ -132,7 +153,11 @@ namespace alpaka
         typename std::enable_if_t<
             std::is_same_v<TTag, TagCpuOmp2Blocks> || std::is_same_v<TTag, TagCpuOmp2Threads>
                 || std::is_same_v<TTag, TagCpuSerial> || std::is_same_v<TTag, TagCpuTbbBlocks>
-                || std::is_same_v<TTag, TagCpuThreads>,
+                || std::is_same_v<TTag, TagCpuThreads>
+#ifdef ALPAKA_ACC_CPU_B_LIBFORK_T_SEQ_ENABLED
+                || std::is_same_v<TTag, TagCpuLibforkBlocks>
+#endif
+            ,
             int>
         = 0>
     ALPAKA_FN_HOST auto memcpy(

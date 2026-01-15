@@ -34,6 +34,9 @@ namespace alpaka
     CREATE_ACC_TAG(TagCpuSycl);
     CREATE_ACC_TAG(TagCpuTbbBlocks);
     CREATE_ACC_TAG(TagCpuThreads);
+#ifdef ALPAKA_ACC_CPU_B_LIBFORK_T_SEQ_ENABLED
+    CREATE_ACC_TAG(TagCpuLibforkBlocks);
+#endif
     CREATE_ACC_TAG(TagFpgaSyclIntel);
     CREATE_ACC_TAG(TagGenericSycl);
     CREATE_ACC_TAG(TagGpuCudaRt);
@@ -85,6 +88,9 @@ namespace alpaka
         alpaka::TagCpuTbbBlocks,
         alpaka::TagCpuOmp2Blocks,
         alpaka::TagCpuOmp2Threads,
+#ifdef ALPAKA_ACC_CPU_B_LIBFORK_T_SEQ_ENABLED
+        alpaka::TagCpuLibforkBlocks,
+#endif
         alpaka::TagGpuCudaRt,
         alpaka::TagGpuHipRt,
         alpaka::TagCpuSycl,

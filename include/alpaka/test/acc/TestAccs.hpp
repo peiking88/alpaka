@@ -63,6 +63,13 @@ namespace alpaka::test
         template<typename TDim, typename TIdx>
         using AccCpuOmp2ThreadsIfAvailableElseInt = int;
 #endif
+#if defined(ALPAKA_ACC_CPU_B_LIBFORK_T_SEQ_ENABLED)
+        template<typename TDim, typename TIdx>
+        using AccCpuLibforkBlocksIfAvailableElseInt = AccCpuLibforkBlocks<TDim, TIdx>;
+#else
+        template<typename TDim, typename TIdx>
+        using AccCpuLibforkBlocksIfAvailableElseInt = int;
+#endif
 #if defined(ALPAKA_ACC_GPU_CUDA_ENABLED) && (ALPAKA_LANG_CUDA || defined(ALPAKA_HOST_ONLY))
         template<typename TDim, typename TIdx>
         using AccGpuCudaRtIfAvailableElseInt = AccGpuCudaRt<TDim, TIdx>;
@@ -122,6 +129,7 @@ namespace alpaka::test
             AccCpuTbbIfAvailableElseInt<TDim, TIdx>,
             AccCpuOmp2BlocksIfAvailableElseInt<TDim, TIdx>,
             AccCpuOmp2ThreadsIfAvailableElseInt<TDim, TIdx>,
+            AccCpuLibforkBlocksIfAvailableElseInt<TDim, TIdx>,
             AccGpuCudaRtIfAvailableElseInt<TDim, TIdx>,
             AccGpuHipRtIfAvailableElseInt<TDim, TIdx>,
             AccCpuSyclIfAvailableElseInt<TDim, TIdx>,

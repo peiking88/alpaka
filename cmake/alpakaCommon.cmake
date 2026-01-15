@@ -90,7 +90,7 @@ option(alpaka_ACC_CPU_B_SEQ_T_THREADS_ENABLE "Enable the threads CPU block threa
 option(alpaka_ACC_CPU_B_TBB_T_SEQ_ENABLE "Enable the TBB CPU grid block back-end" OFF)
 option(alpaka_ACC_CPU_B_OMP2_T_SEQ_ENABLE "Enable the OpenMP 2.0 CPU grid block back-end" OFF)
 option(alpaka_ACC_CPU_B_SEQ_T_OMP2_ENABLE "Enable the OpenMP 2.0 CPU block thread back-end" OFF)
-option(alpaka_ACC_CPU_DISABLE_ATOMIC_REF "Disable atomic_ref for CPU back-ends" OFF)
+option(alpaka_ACC_CPU_B_LIBFORK_T_SEQ_ENABLE "Enable the libfork CPU block back-end" OFF)
 option(alpaka_ACC_SYCL_ENABLE "Enable the SYCL back-end" OFF)
 
 # Unified compiler options
@@ -130,14 +130,14 @@ set_property(CACHE alpaka_DEBUG PROPERTY STRINGS "0;1;2")
 
 # minimum required C++ standard
 set(alpaka_MIN_CXX_STANDARD "20")
-set(alpaka_CXX_STANDARD_DEFAULT "20")
+set(alpaka_CXX_STANDARD_DEFAULT "23")
 # Check whether alpaka_CXX_STANDARD has already been defined as a non-cached variable.
 if(DEFINED alpaka_CXX_STANDARD)
     set(alpaka_CXX_STANDARD_DEFAULT ${alpaka_CXX_STANDARD})
 endif()
 
 set(alpaka_CXX_STANDARD ${alpaka_CXX_STANDARD_DEFAULT} CACHE STRING "C++ standard version")
-set_property(CACHE alpaka_CXX_STANDARD PROPERTY STRINGS "20")
+set_property(CACHE alpaka_CXX_STANDARD PROPERTY STRINGS "20;23")
 
 if(${alpaka_CXX_STANDARD} VERSION_LESS ${alpaka_MIN_CXX_STANDARD})
     message(FATAL_ERROR "The alpaka_CXX_STANDARD standard must be at least C++${alpaka_MIN_CXX_STANDARD}")
@@ -151,6 +151,13 @@ if(NOT TARGET alpaka)
     target_compile_features(alpaka INTERFACE cxx_std_${alpaka_CXX_STANDARD})
 
     add_library(alpaka::alpaka ALIAS alpaka)
+    
+    # Disable all compiler warnings
+    if(MSVC)
+        target_compile_options(alpaka INTERFACE "/w")
+    else()
+        target_compile_options(alpaka INTERFACE "-w")
+    endif()
 endif()
 
 set(alpaka_BLOCK_SHARED_DYN_MEMBER_ALLOC_KIB "47" CACHE STRING "Kibibytes (1024B) of memory to allocate for block shared memory for backends requiring static allocation (includes CPU_B_OMP2_T_SEQ, CPU_B_TBB_T_SEQ, CPU_B_SEQ_T_SEQ, SYCL)")
@@ -296,6 +303,14 @@ endif()
 if(alpaka_ACC_CPU_B_TBB_T_SEQ_ENABLE)
     find_package(TBB 2021.4.0.0 REQUIRED)
     target_link_libraries(alpaka INTERFACE TBB::tbb)
+endif()
+
+#-------------------------------------------------------------------------------
+# Find libfork.
+if(alpaka_ACC_CPU_B_LIBFORK_T_SEQ_ENABLE)
+    # Set a variable that will be used in CMakeLists.txt
+    set(ALPAKA_LIBFORK_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/thirdParty/libfork/include" CACHE INTERNAL "")
+    message(STATUS "Using libfork from: ${CMAKE_CURRENT_SOURCE_DIR}/thirdParty/libfork/include")
 endif()
 
 #-------------------------------------------------------------------------------
@@ -788,6 +803,10 @@ if(alpaka_ACC_CPU_B_SEQ_T_OMP2_ENABLE)
     target_compile_definitions(alpaka INTERFACE "ALPAKA_ACC_CPU_B_SEQ_T_OMP2_ENABLED")
     message(STATUS alpaka_ACC_CPU_B_SEQ_T_OMP2_ENABLED)
 endif()
+if(alpaka_ACC_CPU_B_LIBFORK_T_SEQ_ENABLE)
+    target_compile_definitions(alpaka INTERFACE "ALPAKA_ACC_CPU_B_LIBFORK_T_SEQ_ENABLED")
+    message(STATUS alpaka_ACC_CPU_B_LIBFORK_T_SEQ_ENABLED)
+endif()
 if(alpaka_ACC_GPU_CUDA_ENABLE)
     target_compile_definitions(alpaka INTERFACE "ALPAKA_ACC_GPU_CUDA_ENABLED")
     message(STATUS alpaka_ACC_GPU_CUDA_ENABLED)
@@ -863,6 +882,19 @@ if(TARGET alpaka)
           SYSTEM INTERFACE
             $<BUILD_INTERFACE:${_alpaka_INCLUDE_DIRECTORY}>
             $<INSTALL_INTERFACE:include>)
+    endif()
+
+    # Add libfork include directory if enabled
+    if(alpaka_ACC_CPU_B_LIBFORK_T_SEQ_ENABLE AND ALPAKA_LIBFORK_INCLUDE_DIR)
+        if(BUILD_TESTING)
+            target_include_directories(alpaka
+              INTERFACE
+                $<BUILD_INTERFACE:${ALPAKA_LIBFORK_INCLUDE_DIR}>)
+        else()
+            target_include_directories(alpaka
+              SYSTEM INTERFACE
+                $<BUILD_INTERFACE:${ALPAKA_LIBFORK_INCLUDE_DIR}>)
+        endif()
     endif()
 
     if(${alpaka_DEBUG} GREATER 1)

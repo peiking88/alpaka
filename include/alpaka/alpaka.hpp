@@ -16,6 +16,9 @@
 #include "alpaka/acc/AccCpuSycl.hpp"
 #include "alpaka/acc/AccCpuTbbBlocks.hpp"
 #include "alpaka/acc/AccCpuThreads.hpp"
+#ifdef ALPAKA_ACC_CPU_B_LIBFORK_T_SEQ_ENABLED
+    #include "alpaka/acc/AccCpuLibforkBlocks.hpp"
+#endif
 #include "alpaka/acc/AccDevProps.hpp"
 #include "alpaka/acc/AccFpgaSyclIntel.hpp"
 #include "alpaka/acc/AccGenericSycl.hpp"
@@ -132,6 +135,9 @@
 #include "alpaka/kernel/TaskKernelCpuSycl.hpp"
 #include "alpaka/kernel/TaskKernelCpuTbbBlocks.hpp"
 #include "alpaka/kernel/TaskKernelCpuThreads.hpp"
+#ifdef ALPAKA_ACC_CPU_B_LIBFORK_T_SEQ_ENABLED
+    #include "alpaka/kernel/TaskKernelCpuLibforkBlocks.hpp"
+#endif
 #include "alpaka/kernel/TaskKernelFpgaSyclIntel.hpp"
 #include "alpaka/kernel/TaskKernelGenericSycl.hpp"
 #include "alpaka/kernel/TaskKernelGpuCudaRt.hpp"
