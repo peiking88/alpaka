@@ -14,7 +14,9 @@
 
 // Implementation details.
 #include "alpaka/acc/AccCpuLibforkBlocks.hpp"
+#include "alpaka/core/Config.hpp"
 #include "alpaka/core/Decay.hpp"
+#include "alpaka/core/ThreadPool.hpp"
 #include "alpaka/dev/DevCpu.hpp"
 #include "alpaka/idx/MapIdx.hpp"
 #include "alpaka/kernel/KernelFunctionAttributes.hpp"
@@ -23,11 +25,12 @@
 #include "alpaka/platform/PlatformCpu.hpp"
 #include "alpaka/workdiv/WorkDivMembers.hpp"
 
+#include <algorithm>
 #include <functional>
-#include <stdexcept>
+#include <future>
+#include <thread>
 #include <tuple>
 #include <type_traits>
-#include <thread>
 #include <vector>
 
 #if ALPAKA_DEBUG >= ALPAKA_DEBUG_MINIMAL
@@ -42,6 +45,10 @@ namespace alpaka
     template<typename TDim, typename TIdx, typename TKernelFnObj, typename... TArgs>
     class TaskKernelCpuLibforkBlocks final : public WorkDivMembers<TDim, TIdx>
     {
+    private:
+        // Use the existing ThreadPool for efficient thread management
+        using ThreadPool = alpaka::core::detail::ThreadPool;
+
     public:
         template<typename TWorkDiv>
         ALPAKA_FN_HOST TaskKernelCpuLibforkBlocks(TWorkDiv&& workDiv, TKernelFnObj const& kernelFnObj, TArgs&&... args)
@@ -59,6 +66,12 @@ namespace alpaka
         {
             ALPAKA_DEBUG_MINIMAL_LOG_SCOPE;
 
+            std::apply([&](auto const&... args) { runWithArgs(args...); }, m_args);
+        }
+
+    private:
+        ALPAKA_FN_HOST auto runWithArgs(std::decay_t<TArgs> const&... args) const -> void
+        {
             auto const gridBlockExtent = getWorkDiv<Grid, Blocks>(*this);
             auto const blockThreadExtent = getWorkDiv<Block, Threads>(*this);
             auto const threadElemExtent = getWorkDiv<Thread, Elems>(*this);
@@ -83,29 +96,79 @@ namespace alpaka
             // The number of blocks in the grid.
             TIdx const numBlocksInGrid = gridBlockExtent.prod();
 
-            // Use std::thread for parallel execution (simplified implementation)
-            std::vector<std::thread> threads;
-            threads.reserve(numBlocksInGrid);
+            // Optimize work division for CPU backends
+            // If there are too many blocks with very small work per block, batch them together
+            auto const hardwareConcurrency = std::thread::hardware_concurrency();
+            constexpr TIdx minElementsPerTask = 4096; // Minimum work to amortize thread overhead
+            constexpr TIdx maxTasks = 64; // Maximum number of tasks to queue
 
-            for(TIdx i = 0; i < numBlocksInGrid; ++i)
+            // Calculate optimal chunking strategy
+            TIdx blocksPerTask = 1;
+            if(numBlocksInGrid > hardwareConcurrency * 4)
             {
-                threads.emplace_back([this, i, gridBlockExtent, blockSharedMemDynSizeBytes]
+                // We have too many small blocks - batch them together
+                blocksPerTask = (numBlocksInGrid + maxTasks - 1) / maxTasks;
+                // Ensure each task has at least minElementsPerTask elements
+                TIdx elementsPerTask = blocksPerTask * blockThreadExtent.prod() * threadElemExtent.prod();
+                if(elementsPerTask < minElementsPerTask)
                 {
-                    AccCpuLibforkBlocks<TDim, TIdx> acc(
-                        *static_cast<WorkDivMembers<TDim, TIdx> const*>(this),
-                        blockSharedMemDynSizeBytes);
-
-                    acc.m_gridBlockIdx = mapIdx<TDim::value>(Vec<DimInt<1u>, TIdx>(static_cast<TIdx>(i)), gridBlockExtent);
-
-                    std::apply(m_kernelFnObj, std::tuple_cat(std::tie(acc), m_args));
-
-                    freeSharedVars(acc);
-                });
+                    blocksPerTask = (minElementsPerTask + elementsPerTask - 1) / elementsPerTask;
+                }
             }
 
-            for(auto& thread : threads)
+            // Limit blocks per task to avoid excessive memory/cache pressure
+            blocksPerTask = std::min(blocksPerTask, static_cast<TIdx>(numBlocksInGrid));
+
+            TIdx const numTasks = (numBlocksInGrid + blocksPerTask - 1) / blocksPerTask;
+            auto const threadPoolSize = std::min(
+                static_cast<unsigned int>(hardwareConcurrency),
+                static_cast<unsigned int>(numTasks));
+            auto const finalThreadPoolSize = std::max(static_cast<unsigned int>(1), threadPoolSize);
+
+#if ALPAKA_DEBUG >= ALPAKA_DEBUG_FULL
+            std::cout << __func__ << " numBlocksInGrid: " << numBlocksInGrid
+                      << " blocksPerTask: " << blocksPerTask
+                      << " numTasks: " << numTasks
+                      << " threadPoolSize: " << finalThreadPoolSize << std::endl;
+#endif
+
+            // Create thread pool with optimal size
+            ThreadPool threadPool(finalThreadPoolSize);
+
+            // Enqueue batched block tasks to the thread pool
+            std::vector<std::future<void>> futures;
+            futures.reserve(numTasks);
+
+            for(TIdx taskIdx = 0; taskIdx < numTasks; ++taskIdx)
             {
-                thread.join();
+                TIdx const startBlockIdx = taskIdx * blocksPerTask;
+                TIdx const endBlockIdx = std::min(startBlockIdx + blocksPerTask, numBlocksInGrid);
+
+                futures.emplace_back(threadPool.enqueueTask(
+                    [this, startBlockIdx, endBlockIdx, gridBlockExtent, blockSharedMemDynSizeBytes, &args...]()
+                    {
+                        // Process a batch of blocks in this thread
+                        for(TIdx blockIdx = startBlockIdx; blockIdx < endBlockIdx; ++blockIdx)
+                        {
+                            AccCpuLibforkBlocks<TDim, TIdx> acc(
+                                *static_cast<WorkDivMembers<TDim, TIdx> const*>(this),
+                                blockSharedMemDynSizeBytes);
+
+                            acc.m_gridBlockIdx = mapIdx<TDim::value>(
+                                Vec<DimInt<1u>, TIdx>(static_cast<TIdx>(blockIdx)),
+                                gridBlockExtent);
+
+                            std::apply(m_kernelFnObj, std::tuple_cat(std::tie(acc), m_args));
+
+                            freeSharedVars(acc);
+                        }
+                    }));
+            }
+
+            // Wait for all tasks to complete
+            for(auto& future : futures)
+            {
+                future.wait();
             }
         }
 
