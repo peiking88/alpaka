@@ -103,38 +103,6 @@ When an accelerator back-end using *TBB* is enabled, the compiler and platform h
 [Boost](https://boost.org/) 1.78.0+ is an optional external dependency, if the used C++ standard library does not support `std::atomic_ref`.
 
 
-BabelStream benchmark: multi-backend build and sample results
--------------------------------------------------------------
-- CMake constraint: CUDA and HIP cannot be enabled together; use separate build dirs if both are needed. On this host no CUDA/HIP/SYCL/TBB toolchains are available, so GPU/SYCL and TBB were disabled.
-- One-shot configure (CPU serial, std::thread, OpenMP blocks/threads, Libfork enabled; TBB off):
-  - `cmake -S . -B build/all-backends -D alpaka_BUILD_BENCHMARKS=ON -D BUILD_TESTING=ON -D alpaka_ACC_CPU_B_SEQ_T_SEQ_ENABLE=ON -D alpaka_ACC_CPU_B_SEQ_T_THREADS_ENABLE=ON -D alpaka_ACC_CPU_B_OMP2_T_SEQ_ENABLE=ON -D alpaka_ACC_CPU_B_SEQ_T_OMP2_ENABLE=ON -D alpaka_ACC_CPU_B_LIBFORK_T_SEQ_ENABLE=ON -D alpaka_ACC_CPU_B_TBB_T_SEQ_ENABLE=OFF -D alpaka_ACC_GPU_CUDA_ENABLE=OFF -D alpaka_ACC_GPU_HIP_ENABLE=OFF -D alpaka_ACC_SYCL_ENABLE=OFF`
-  - Build: `cmake --build build/all-backends -j`
-  - Run: `cd build/all-backends && ctest -R babelstream --output-on-failure`
-- Sample run output (array-size=262144, number-runs=2, AMD Ryzen 9 9950X3D):
-  - AccCpuSerial Triad bandwidth: 0.085 GB/s (float), 0.168 GB/s (double)
-  - AccCpuThreads Triad bandwidth: 0.00023 GB/s (float), 0.00064 GB/s (double)
-  - AccCpuOmp2Blocks Triad bandwidth: 1.35 GB/s (float), 2.97 GB/s (double)
-  - AccCpuOmp2Threads Triad bandwidth: 0.091 GB/s (float), 0.183 GB/s (double)
-  - AccCpuLibforkBlocks Triad bandwidth: 0.82 GB/s (float), 1.74 GB/s (double)
-- Full output log: `build/all-backends/babelstream_all_backends.log`
-- Summary (Triad, higher is better):
-
-  | Backend               | Float (GB/s) | Double (GB/s) |
-  |-----------------------|--------------|---------------|
-  | AccCpuOmp2Blocks      | 1.35         | 2.97          |
-  | AccCpuLibforkBlocks   | 0.82         | 1.74          |
-  | AccCpuOmp2Threads     | 0.091        | 0.183         |
-  | AccCpuSerial          | 0.085        | 0.168         |
-  | AccCpuThreads         | 0.00023      | 0.00064       |
-
-  Observations: OpenMP blocks leads on this host; Libfork is second; std::thread backend performs worst in this configuration.
-
-- Note on `useCuBLASInAlpaka` example: it intentionally warns and skips if `alpaka_ACC_GPU_CUDA_ONLY_MODE` is not set. To build it (and silence the warning), configure a CUDA-only build, e.g.:
-  - `cmake -S . -B build/cuda-only -D alpaka_BUILD_EXAMPLES=ON -D alpaka_ACC_GPU_CUDA_ENABLE=ON -D alpaka_ACC_GPU_CUDA_ONLY_MODE=ON -D alpaka_ACC_CPU_B_SEQ_T_SEQ_ENABLE=OFF`
-  - `cmake --build build/cuda-only -j`
-  Ensure CUDA SDK/driver and nvcc or CUDA-capable clang are available.
-
-
 Libfork Back-end Support
 ------------------------
 
@@ -223,6 +191,19 @@ cmake -S . -B build -D alpaka_ACC_CPU_B_SEQ_T_SEQ_ENABLE=ON \
                       -D alpaka_ACC_CPU_B_LIBFORK_T_SEQ_ENABLE=ON \
                       -D BUILD_TESTING=ON \
                       -D alpaka_BUILD_BENCHMARKS=ON
+
+# Multi-backend build (CPU serial, std::thread, OpenMP blocks/threads, Libfork)
+# Note: CUDA and HIP cannot be enabled together; use separate build dirs if both are needed
+cmake -S . -B build/all-backends -D alpaka_BUILD_BENCHMARKS=ON \
+                      -D BUILD_TESTING=ON \
+                      -D alpaka_ACC_CPU_B_SEQ_T_SEQ_ENABLE=ON \
+                      -D alpaka_ACC_CPU_B_SEQ_T_THREADS_ENABLE=ON \
+                      -D alpaka_ACC_CPU_B_OMP2_T_SEQ_ENABLE=ON \
+                      -D alpaka_ACC_CPU_B_SEQ_T_OMP2_ENABLE=ON \
+                      -D alpaka_ACC_CPU_B_LIBFORK_T_SEQ_ENABLE=ON \
+                      -D alpaka_ACC_GPU_CUDA_ENABLE=OFF \
+                      -D alpaka_ACC_GPU_HIP_ENABLE=OFF \
+                      -D alpaka_ACC_SYCL_ENABLE=OFF
 ```
 
 #### 3. Build Project
@@ -311,6 +292,19 @@ echo "=== Performance Comparison Complete ==="
 - **Overall Speedup**: 14.04x improvement
 - **Memory Bandwidth**: 10-15x higher with Libfork
 - **Consistent Gains**: 13-16x speedup across all kernel types
+
+**Multi-Backend Performance Comparison:**
+(AMD Ryzen 9 9950X3D, array-size=262144, number-runs=2)
+
+| Backend               | Float (GB/s) | Double (GB/s) |
+|-----------------------|--------------|---------------|
+| AccCpuOmp2Blocks      | 1.35         | 2.97          |
+| AccCpuLibforkBlocks   | 0.82         | 1.74          |
+| AccCpuOmp2Threads     | 0.091        | 0.183         |
+| AccCpuSerial          | 0.085        | 0.168         |
+| AccCpuThreads         | 0.00023      | 0.00064       |
+
+Observations: OpenMP blocks leads on this host; Libfork is second; std::thread backend performs worst in this configuration.
 
 **Unit Test Results:**
 ```
