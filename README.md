@@ -129,6 +129,11 @@ BabelStream benchmark: multi-backend build and sample results
 
   Observations: OpenMP blocks leads on this host; Libfork is second; std::thread backend performs worst in this configuration.
 
+- Note on `useCuBLASInAlpaka` example: it intentionally warns and skips if `alpaka_ACC_GPU_CUDA_ONLY_MODE` is not set. To build it (and silence the warning), configure a CUDA-only build, e.g.:
+  - `cmake -S . -B build/cuda-only -D alpaka_BUILD_EXAMPLES=ON -D alpaka_ACC_GPU_CUDA_ENABLE=ON -D alpaka_ACC_GPU_CUDA_ONLY_MODE=ON -D alpaka_ACC_CPU_B_SEQ_T_SEQ_ENABLE=OFF`
+  - `cmake --build build/cuda-only -j`
+  Ensure CUDA SDK/driver and nvcc or CUDA-capable clang are available.
+
 
 Libfork Back-end Support
 ------------------------
