@@ -1,0 +1,3 @@
+[submodule "thirdParty/libfork"]
+	path = thirdParty/libfork
+	url = https://bgithub.xyz/ConorWilliams/libfork
